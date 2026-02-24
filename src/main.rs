@@ -1,48 +1,18 @@
-use clap::{Parser, Subcommand};
-use std::fs::{self};
-use time::OffsetDateTime;
-
-mod model;
-use crate::model::{Db, Todo};
-
+use anyhow::Result;
+use clap::Parser;
 use std::io::{self, Write};
+mod cli;
+mod model;
+mod ui;
+use crate::cli::{Cli, Commands};
 
-#[derive(Subcommand, Debug)]
-enum Commands {
-    /// The `Add` command takes a `content` string argument
-    Add { content: Vec<String> },
-    /// The `Rm` command takes an `id` number argument.
-    Rm { id: u32 },
-    /// The `Ls` command lists all todos.
-    Ls,
-    /// The `Done` command takes an `id` number argument.
-    Done { id: u32 },
-    /// The `Edit` command takes an `id` number argument and a `content` string argument.
-    Edit { id: u32, content: Vec<String> },
-}
+mod storage;
+use crate::storage::Storage;
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-fn load_db() -> Db {
-    let content = fs::read_to_string("todos.json").unwrap_or_default();
-    let todos: Db = serde_json::from_str(&content).unwrap_or(Db::new());
-    todos
-}
-
-fn save_db(db: Db) {
-    let content = serde_json::to_string_pretty(&db).unwrap();
-    fs::write("todos.json", content).unwrap();
-}
-
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let mut db = load_db();
+    let mut db = Storage::load()?;
 
     let changed: bool = match cli.command {
         Commands::Add { content } => {
@@ -52,12 +22,11 @@ fn main() {
 
         Commands::Ls => {
             let max_id = db
-                .todos
                 .iter()
-                .map(|t| t.id.to_string().len())
+                .map(|t| t.id().to_string().len())
                 .max()
                 .unwrap_or(0);
-            let max_content = db.todos.iter().map(|t| t.content.len()).max().unwrap_or(0);
+            let max_content = db.iter().map(|t| t.content().len()).max().unwrap_or(0);
             println!(
                 "|{:<max_id$}|{:<4}  |{:<max_content$}|",
                 "ID",
@@ -68,41 +37,40 @@ fn main() {
             );
             let stdout = io::stdout();
             let mut out = stdout.lock();
-            for todo in db.todos.iter() {
-                let done_str = if todo.completed_at.is_some() {
-                    format!("[x]")
-                } else {
-                    "[ ]".to_string()
-                };
+            for todo in db.iter() {
+                let done_str = if todo.is_completed() { "[X]" } else { "[ ]" };
                 writeln!(
                     out,
                     "|{:<max_id$}|{:<4}  |{:<max_content$}|",
-                    todo.id,
+                    todo.id(),
                     done_str,
-                    todo.content,
+                    todo.content(),
                     max_id = max_id + 1,
                     max_content = max_content
                 )
                 .unwrap();
             }
+            false
         }
         Commands::Rm { id } => {
             db.remove_todo(id);
             true
         }
         Commands::Done { id } => {
-            let todo = db.get_todo_mut(id);
+            let todo = db.get_todo_mut(id).expect("Todo not found");
             todo.set_completed(true);
             true
         }
         Commands::Edit { id, content } => {
-            let todo = db.get_todo_mut(id);
+            let todo = db.get_todo_mut(id).expect("Todo not found");
             todo.set_content(content.join(" "));
             true
         }
     };
 
     if changed {
-        save_db(db);
+        Storage::save(db)?;
     }
+
+    Ok(())
 }

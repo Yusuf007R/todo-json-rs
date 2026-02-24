@@ -31,18 +31,43 @@ impl Todo {
         }
     }
 
-    pub fn set_content(&mut self, content: String) {
+    pub fn set_content(&mut self, content: String) -> &Self {
         self.content = content;
         self.updated_at = OffsetDateTime::now_utc();
+        self
     }
 
-    pub fn set_completed(&mut self, completed: bool) {
+    pub fn set_completed(&mut self, completed: bool) -> &Self {
         if completed {
             self.completed_at = Some(OffsetDateTime::now_utc());
         } else {
             self.completed_at = None;
         }
         self.updated_at = OffsetDateTime::now_utc();
+        self
+    }
+
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+
+    pub fn content(&self) -> &str {
+        &self.content
+    }
+    pub fn completed_at(&self) -> Option<OffsetDateTime> {
+        self.completed_at
+    }
+
+    pub fn created_at(&self) -> OffsetDateTime {
+        self.created_at
+    }
+
+    pub fn updated_at(&self) -> OffsetDateTime {
+        self.updated_at
+    }
+
+    pub fn is_completed(&self) -> bool {
+        self.completed_at.is_some()
     }
 }
 
@@ -79,5 +104,9 @@ impl Db {
 
     pub fn iter(&self) -> impl Iterator<Item = &Todo> {
         self.todos.iter()
+    }
+
+    pub fn get_next_id(&self) -> u32 {
+        self.next_id
     }
 }
