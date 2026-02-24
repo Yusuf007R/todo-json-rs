@@ -1,7 +1,9 @@
 use clap::{Parser, Subcommand};
-use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use time::OffsetDateTime;
+
+mod model;
+use crate::model::{Db, Todo};
 
 use std::io::{self, Write};
 
@@ -26,30 +28,9 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Db {
-    next_id: u32,
-    todos: Vec<Todo>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Todo {
-    id: u32,
-    content: String,
-    #[serde(with = "time::serde::rfc3339::option")]
-    completed_at: Option<OffsetDateTime>,
-    #[serde(with = "time::serde::rfc3339")]
-    created_at: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    updated_at: OffsetDateTime,
-}
-
 fn load_db() -> Db {
     let content = fs::read_to_string("todos.json").unwrap_or_default();
-    let todos: Db = serde_json::from_str(&content).unwrap_or(Db {
-        next_id: 1,
-        todos: vec![],
-    });
+    let todos: Db = serde_json::from_str(&content).unwrap_or(Db::new());
     todos
 }
 
@@ -63,18 +44,10 @@ fn main() {
 
     let mut db = load_db();
 
-    match cli.command {
+    let changed: bool = match cli.command {
         Commands::Add { content } => {
-            let todo = Todo {
-                id: db.next_id,
-                content: content.join(" "),
-                completed_at: None,
-                created_at: OffsetDateTime::now_utc(),
-                updated_at: OffsetDateTime::now_utc(),
-            };
-            db.todos.push(todo);
-            db.next_id += 1;
-            save_db(db);
+            db.add_todo(content.join(" "));
+            true
         }
 
         Commands::Ls => {
@@ -114,23 +87,22 @@ fn main() {
             }
         }
         Commands::Rm { id } => {
-            db.todos.retain(|todo| todo.id != id);
-            save_db(db);
+            db.remove_todo(id);
+            true
         }
         Commands::Done { id } => {
-            if let Some(todo) = db.todos.iter_mut().find(|todo| todo.id == id) {
-                let now = OffsetDateTime::now_utc();
-                todo.completed_at = Some(now);
-                todo.updated_at = now;
-                save_db(db);
-            };
+            let todo = db.get_todo_mut(id);
+            todo.set_completed(true);
+            true
         }
         Commands::Edit { id, content } => {
-            if let Some(todo) = db.todos.iter_mut().find(|todo| todo.id == id) {
-                todo.content = content.join(" ");
-                todo.updated_at = OffsetDateTime::now_utc();
-                save_db(db);
-            };
+            let todo = db.get_todo_mut(id);
+            todo.set_content(content.join(" "));
+            true
         }
+    };
+
+    if changed {
+        save_db(db);
     }
 }
