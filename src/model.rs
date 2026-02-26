@@ -79,6 +79,10 @@ impl Db {
         }
     }
 
+    pub fn todos(&self) -> &[Todo] {
+        &self.todos
+    }
+
     pub fn add_todo(&mut self, content: String) -> &Todo {
         let todo = Todo::new(self.next_id, content);
         self.todos.push(todo);
@@ -100,10 +104,6 @@ impl Db {
 
     pub fn get_todo_mut(&mut self, id: u32) -> Option<&mut Todo> {
         self.todos.iter_mut().find(|t| t.id == id)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &Todo> {
-        self.todos.iter()
     }
 
     pub fn get_next_id(&self) -> u32 {

@@ -17,6 +17,9 @@ pub enum Commands {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
+    #[arg(long)]
+    pub json: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }

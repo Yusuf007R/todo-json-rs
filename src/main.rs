@@ -1,69 +1,54 @@
 use anyhow::Result;
 use clap::Parser;
-use std::io::{self, Write};
 mod cli;
+use std::io;
 mod model;
+mod storage;
 mod ui;
 use crate::cli::{Cli, Commands};
-
-mod storage;
 use crate::storage::Storage;
+use crate::ui::{JsonRenderer, Render, Renderer, TextRenderer};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let mut db = Storage::load()?;
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
+
+    let renderer = if cli.json {
+        Renderer::Json(JsonRenderer)
+    } else {
+        Renderer::Text(TextRenderer)
+    };
 
     let changed: bool = match cli.command {
         Commands::Add { content } => {
-            db.add_todo(content.join(" "));
+            let todo = db.add_todo(content.join(" "));
+            renderer.render_todo(&mut out, todo)?;
             true
         }
 
         Commands::Ls => {
-            let max_id = db
-                .iter()
-                .map(|t| t.id().to_string().len())
-                .max()
-                .unwrap_or(0);
-            let max_content = db.iter().map(|t| t.content().len()).max().unwrap_or(0);
-            println!(
-                "|{:<max_id$}|{:<4}  |{:<max_content$}|",
-                "ID",
-                "Done",
-                "Content",
-                max_id = max_id + 1,
-                max_content = max_content
-            );
-            let stdout = io::stdout();
-            let mut out = stdout.lock();
-            for todo in db.iter() {
-                let done_str = if todo.is_completed() { "[X]" } else { "[ ]" };
-                writeln!(
-                    out,
-                    "|{:<max_id$}|{:<4}  |{:<max_content$}|",
-                    todo.id(),
-                    done_str,
-                    todo.content(),
-                    max_id = max_id + 1,
-                    max_content = max_content
-                )
-                .unwrap();
-            }
+            let todos = db.todos();
+            renderer.render_todos(&mut out, todos)?;
             false
         }
         Commands::Rm { id } => {
-            db.remove_todo(id);
+            let todo = db.remove_todo(id).expect("Todo not found");
+            renderer.render_todo(&mut out, &todo)?;
             true
         }
         Commands::Done { id } => {
             let todo = db.get_todo_mut(id).expect("Todo not found");
-            todo.set_completed(true);
+            let todo = todo.set_completed(true);
+            renderer.render_todo(&mut out, todo)?;
             true
         }
         Commands::Edit { id, content } => {
             let todo = db.get_todo_mut(id).expect("Todo not found");
-            todo.set_content(content.join(" "));
+            let todo = todo.set_content(content.join(" "));
+            renderer.render_todo(&mut out, todo)?;
             true
         }
     };
