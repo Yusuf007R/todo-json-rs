@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Subcommand, Debug)]
 pub enum TodoCommands {
@@ -36,11 +36,20 @@ pub enum Commands {
     },
 }
 
+// 1. Group the flags to prevent them from being used together
+#[derive(Args, Debug)]
+#[group(multiple = false)]
+pub struct OutputFlags {
+    /// Output the result as JSON
+    #[arg(long)]
+    pub json: bool,
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-    #[arg(long)]
-    pub json: bool,
+    #[command(flatten)]
+    pub output_flags: OutputFlags,
 
     #[command(subcommand)]
     pub command: Commands,

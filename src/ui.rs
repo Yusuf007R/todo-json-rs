@@ -1,4 +1,4 @@
-use crate::model::Todo;
+use crate::{cli, model::Todo};
 use anyhow::{Context, Result};
 use std::io::Write;
 
@@ -10,6 +10,16 @@ pub trait Render {
 pub enum Renderer {
     Json(JsonRenderer),
     Text(TextRenderer),
+}
+
+impl Renderer {
+    pub fn new(flag: cli::OutputFlags) -> Self {
+        if flag.json {
+            Renderer::Json(JsonRenderer)
+        } else {
+            Renderer::Text(TextRenderer)
+        }
+    }
 }
 
 pub struct TextRenderer;
