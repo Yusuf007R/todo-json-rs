@@ -1,4 +1,5 @@
 use clap::{Args, Parser, Subcommand};
+use std::path::PathBuf;
 
 #[derive(Subcommand, Debug)]
 pub enum TodoCommands {
@@ -45,11 +46,33 @@ pub struct OutputFlags {
     pub json: bool,
 }
 
+fn validate_dir(s: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(s);
+
+    if path.file_stem().is_some() && path.extension().is_some() {
+        return Err(format!(
+            "'{}' appears to be a file path, expected a directory",
+            s
+        ));
+    }
+
+    if path.is_file() {
+        return Err(format!("'{}' is a file, expected a directory", s));
+    }
+
+    Ok(path)
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
     #[command(flatten)]
     pub output_flags: OutputFlags,
+
+    /// Override the default database directory. Can also be set using the `TODO_JSON_RS_DIR`
+    /// environment variable.
+    #[arg(long, env = "TODO_JSON_RS_DIR", value_parser = validate_dir)]
+    pub db_dir: Option<PathBuf>,
 
     #[command(subcommand)]
     pub command: Commands,

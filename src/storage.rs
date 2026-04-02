@@ -1,31 +1,66 @@
 use crate::model::Db;
 use anyhow::{Context, Result};
-use std::fs::{self};
-pub struct Storage;
+use dirs::data_dir;
+use std::{
+    fs::{self},
+    path::PathBuf,
+};
+pub struct Storage {
+    db_file_path: PathBuf,
+}
 
 impl Storage {
-    pub fn load() -> Result<Db> {
-        let content = fs::read_to_string("todos.json")
-            .context("Failed to read todos.json, has the db been initialized?")?;
-        let todos: Db = serde_json::from_str(&content).context("Failed to parse todos.json")?;
+    pub fn new(db_dir: Option<PathBuf>) -> Result<Self> {
+        let db_dir = match db_dir {
+            Some(dir) => dir,
+            None => Self::default_db_dir()?,
+        };
+
+        if !db_dir.exists() {
+            fs::create_dir_all(&db_dir).context("Failed to create database directory")?;
+        }
+
+        Ok(Storage {
+            db_file_path: db_dir.join("todos.json"),
+        })
+    }
+
+    pub fn default_db_dir() -> Result<PathBuf> {
+        let path =
+            data_dir().context("Could not determine data directory for the current platform")?;
+
+        Ok(path.join("todo-json-rs"))
+    }
+
+    pub fn load(&self) -> Result<Db> {
+        let content = fs::read_to_string(&self.db_file_path).with_context(|| {
+            format!(
+                "Failed to read `{}`, has the db been initialized?, try using command `db init`",
+                self.db_file_path.display()
+            )
+        })?;
+        let todos: Db = serde_json::from_str(&content)
+            .with_context(|| format!("Failed to parse `{}`", self.db_file_path.display()))?;
         Ok(todos)
     }
 
-    pub fn save(db: Db) -> Result<()> {
+    pub fn save(&self, db: &Db) -> Result<()> {
         let content =
             serde_json::to_string_pretty(&db).context("Failed to serialize db to JSON")?;
-        fs::write("todos.json", content).context("Failed to write to todos.json")?;
+        fs::write(&self.db_file_path, content)
+            .with_context(|| format!("Failed to write to `{}`", self.db_file_path.display()))?;
 
         Ok(())
     }
 
-    pub fn init() -> Result<()> {
+    pub fn init(&self) -> Result<()> {
         let db = Db::new();
-        Self::save(db)
+        self.save(&db)
     }
 
-    pub fn reset() -> Result<()> {
-        fs::remove_file("todos.json").context("Failed to remove todos.json")?;
+    pub fn reset(&self) -> Result<()> {
+        fs::remove_file(&self.db_file_path)
+            .with_context(|| format!("Failed to remove `{}`", self.db_file_path.display()))?;
         Ok(())
     }
 }

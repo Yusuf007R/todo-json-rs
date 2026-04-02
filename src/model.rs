@@ -31,20 +31,18 @@ impl Todo {
         }
     }
 
-    pub fn set_content(&mut self, content: String) -> &Self {
+    pub fn set_content(&mut self, content: String) {
         self.content = content;
         self.updated_at = OffsetDateTime::now_utc();
-        self
     }
 
-    pub fn set_completed(&mut self, completed: bool) -> &Self {
+    pub fn set_completed(&mut self, completed: bool) {
         if completed {
             self.completed_at = Some(OffsetDateTime::now_utc());
         } else {
             self.completed_at = None;
         }
         self.updated_at = OffsetDateTime::now_utc();
-        self
     }
 
     pub fn id(&self) -> u32 {

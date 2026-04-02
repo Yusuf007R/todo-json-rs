@@ -3,15 +3,19 @@ use crate::storage::Storage;
 use crate::ui::{Render, Renderer};
 use anyhow::{Context, Result};
 use std::io::Write;
+use std::path::PathBuf;
+
 pub struct App {
     renderer: Renderer,
+    storage: Storage,
 }
 
 impl App {
-    pub fn new(flag: OutputFlags) -> Self {
-        App {
+    pub fn new(flag: OutputFlags, db_path: Option<PathBuf>) -> Result<Self> {
+        Ok(App {
             renderer: Renderer::new(flag),
-        }
+            storage: Storage::new(db_path)?,
+        })
     }
 
     pub fn run(&self, cmd: Commands, out: &mut impl Write) -> Result<()> {
@@ -24,12 +28,12 @@ impl App {
     fn handle_db_command(&self, cmd: DbCommands, out: &mut impl Write) -> Result<()> {
         match cmd {
             DbCommands::Init => {
-                Storage::init()?;
+                self.storage.init()?;
                 writeln!(out, "Database initialized").context("Failed to write to output")?;
                 Ok(())
             }
             DbCommands::Reset => {
-                Storage::reset()?;
+                self.storage.reset()?;
                 writeln!(out, "Database reset").context("Failed to write to output")?;
                 Ok(())
             }
@@ -37,7 +41,7 @@ impl App {
     }
 
     fn handle_todo_command(&self, cmd: TodoCommands, out: &mut impl Write) -> Result<()> {
-        let mut db = Storage::load()?;
+        let mut db = self.storage.load()?;
         let changed = match cmd {
             TodoCommands::Add { content } => {
                 let todo = db.add_todo(content.join(" "));
@@ -58,20 +62,20 @@ impl App {
             }
             TodoCommands::Done { id } => {
                 let todo = db.get_todo_mut(id).context("Todo not found")?;
-                let todo = todo.set_completed(true);
+                todo.set_completed(true);
                 self.renderer.render_todo(out, todo)?;
                 true
             }
             TodoCommands::Edit { id, content } => {
                 let todo = db.get_todo_mut(id).context("Todo not found")?;
-                let todo = todo.set_content(content.join(" "));
+                todo.set_content(content.join(" "));
                 self.renderer.render_todo(out, todo)?;
                 true
             }
         };
 
         if changed {
-            Storage::save(db)?;
+            self.storage.save(&db)?;
         }
         Ok(())
     }

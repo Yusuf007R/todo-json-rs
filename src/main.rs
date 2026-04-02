@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     let stdout = io::stdout();
     let mut out = stdout.lock();
 
-    let app = App::new(cli.output_flags);
+    let app = App::new(cli.output_flags, cli.db_dir)?;
 
     app.run(cli.command, &mut out)
 }
