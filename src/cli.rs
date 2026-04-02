@@ -4,15 +4,39 @@ use std::path::PathBuf;
 #[derive(Subcommand, Debug)]
 pub enum TodoCommands {
     /// The `Add` command takes a `content` string argument
-    Add { content: Vec<String> },
+    Add {
+        #[arg(required = true)]
+        content: Vec<String>,
+    },
     /// The `Rm` command takes an `id` number argument.
     Rm { id: u32 },
+    /// The `Show` command takes an `id` number argument.
+    Show { id: u32 },
     /// The `Ls` command lists all todos.
-    Ls,
+    Ls {
+        /// The `Done` flag filters the list to show only completed todos.
+        #[arg(long, conflicts_with = "pending")]
+        done: bool,
+
+        /// The `Pending` flag filters the list to show only pending todos.
+        #[arg(long, conflicts_with = "done")]
+        pending: bool,
+    },
+    /// The `Search` command takes a `query` string argument and lists all todos that contain the query in their content.
+    Search {
+        #[arg(required = true)]
+        query: Vec<String>,
+    },
     /// The `Done` command takes an `id` number argument.
     Done { id: u32 },
+    /// The `Undone` command takes an `id` number argument.
+    Undone { id: u32 },
     /// The `Edit` command takes an `id` number argument and a `content` string argument.
-    Edit { id: u32, content: Vec<String> },
+    Edit {
+        id: u32,
+        #[arg(required = true)]
+        content: Vec<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]

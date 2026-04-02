@@ -4,7 +4,7 @@ use std::io::Write;
 
 pub trait Render {
     fn render_todo(&self, out: &mut impl Write, todo: &Todo) -> Result<()>;
-    fn render_todos(&self, out: &mut impl Write, todos: &[Todo]) -> Result<()>;
+    fn render_todos(&self, out: &mut impl Write, todos: &[&Todo]) -> Result<()>;
 }
 
 pub enum Renderer {
@@ -32,7 +32,7 @@ impl Render for JsonRenderer {
         Ok(())
     }
 
-    fn render_todos(&self, out: &mut impl Write, todos: &[Todo]) -> Result<()> {
+    fn render_todos(&self, out: &mut impl Write, todos: &[&Todo]) -> Result<()> {
         let json = serde_json::to_string(&todos).context("Failed to serialize todos to JSON")?;
         writeln!(out, "{}", json).context("Failed to write JSON to output")?;
         Ok(())
@@ -65,7 +65,7 @@ impl TextRenderer {
         Ok(())
     }
 
-    fn compute_widths(&self, todos: &[Todo]) -> TextRendererLayout {
+    fn compute_widths(&self, todos: &[&Todo]) -> TextRendererLayout {
         let max_id = todos
             .iter()
             .map(|t| t.id().to_string().len())
@@ -95,12 +95,12 @@ impl TextRenderer {
 
 impl Render for TextRenderer {
     fn render_todo(&self, out: &mut impl Write, todo: &Todo) -> Result<()> {
-        let layout = self.compute_widths(std::slice::from_ref(todo));
+        let layout = self.compute_widths(std::slice::from_ref(&todo));
         self.print_header(out, &layout)?;
         self.internal_render_todo(out, todo, &layout)
     }
 
-    fn render_todos(&self, out: &mut impl Write, todos: &[Todo]) -> Result<()> {
+    fn render_todos(&self, out: &mut impl Write, todos: &[&Todo]) -> Result<()> {
         let layout = self.compute_widths(todos);
         self.print_header(out, &layout)?;
         for todo in todos {
@@ -117,7 +117,7 @@ impl Render for Renderer {
             Renderer::Text(r) => r.render_todo(out, todo),
         }
     }
-    fn render_todos(&self, out: &mut impl Write, todos: &[Todo]) -> Result<()> {
+    fn render_todos(&self, out: &mut impl Write, todos: &[&Todo]) -> Result<()> {
         match self {
             Renderer::Json(r) => r.render_todos(out, todos),
             Renderer::Text(r) => r.render_todos(out, todos),

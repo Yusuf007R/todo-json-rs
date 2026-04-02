@@ -12,7 +12,8 @@ I made this as a learning project while getting more comfortable with Rust. The 
 ## What it can do
 
 - initialize or reset a local todo database
-- add, list, edit, complete, and remove todos
+- add, show, edit, complete, uncomplete, search, and remove todos
+- list all todos or filter by completed and pending status
 - print output as a simple table or as JSON
 - store data in a default app data directory or a custom directory
 
@@ -51,10 +52,40 @@ List todos:
 cargo run -- todo ls
 ```
 
+List only completed todos:
+
+```bash
+cargo run -- todo ls --done
+```
+
+List only pending todos:
+
+```bash
+cargo run -- todo ls --pending
+```
+
+Show one todo:
+
+```bash
+cargo run -- todo show 1
+```
+
+Search todos:
+
+```bash
+cargo run -- todo search rust
+```
+
 Mark a todo as done:
 
 ```bash
 cargo run -- todo done 1
+```
+
+Mark a todo as not done:
+
+```bash
+cargo run -- todo undone 1
 ```
 
 Edit a todo:
@@ -102,6 +133,19 @@ Commands:
 Options:
   --json
   --db-dir <DB_DIR>
+```
+
+Todo subcommands:
+
+```text
+add
+rm
+show
+ls
+search
+done
+undone
+edit
 ```
 
 ## Why this project
